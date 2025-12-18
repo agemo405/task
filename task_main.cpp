@@ -1,11 +1,17 @@
-
+#include <ncurses.h>
 #include "task.hpp"
 #include "task_def.cpp"
 
 
 int main(void) {
     
-    Clear();
+    init_win();
+    start_color();
+    cbreak();
+    noecho();
+
+    refresh();
+    
     
     std::vector<Account> Tasks;
     uint32_t FocusAcc(0);
@@ -31,7 +37,7 @@ int main(void) {
      while(IsFirstConnexion) if(LogAccount(Tasks, FocusAcc, _FILE_ACC_) < 0) return -1;
      
      std::cout << std::left;
-     
+ 
 
     while(_input != EXIT) {
         Print("Que voulez vous faire : \n\v");
@@ -46,6 +52,7 @@ int main(void) {
         InputGuard();
         save(Tasks, FocusAcc, _FILE_);
     }
-    
-    Clear();
+
+    erase();
+    endwin();
 }
