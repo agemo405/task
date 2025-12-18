@@ -17,29 +17,37 @@
 #define ACCOUNT 6
 #define EXIT 7
 
+#define FILE_TASK_DATA ".task.save.tasks.data.bin"
+#define FILE_ACCOUNT_DATA  ".task.save.account.data.bin"
 
-#define _FILE_ "task_save_data.bin" 
-#define _FILE_ACC_ "task_save_account_data.bin"
+#define BUFFER_SIZE 100
+#define INPUT_SIZE 99
+#define MAX_TITLE_DISPLAY_SIZE 35
 
-#define FLUSH()  std::cout << std::flush
-#define ENDL() std::cout << std::endl
+#define RED_ID 1
+#define GREEN_ID 2
+#define YELLOW_ID 3
+#define PURPLE_ID 4
 
-#define LINE_WIDTH 40
+#define RED COLOR_PAIR(RED_ID)
+#define GREEN COLOR_PAIR(GREEN_ID)
+#define YELLOW COLOR_PAIR(YELLOW_ID)
+#define PURPLE COLOR_PAIR(PURPLE_ID)
 
-#define RED "\033[31m"
-#define GREEN "\033[32m"
-#define YELLOW "\033[33m"
-#define PURPLE "\033[34m"
+#define TAB '\t'
+#define ENDL() printw("\n");
+#define VER_TAB() printw("\n\v");
 
-#define TAB "    "
-#define BOLD "\033[1m"
-#define LIGHT "\033[2m"
-#define UNDERLINED "\033[4m"
-#define RESET "\033[0m"
+#define BOLD A_BOLD
+#define LIGHT A_DIM
+#define UNDERLINE A_UNDERLINE
+#define OVERLINE A_REVERSE
+
+#define DRAW(ATT) attron(ATT)
+#define CLEAR(ATT) attroff(ATT)
 
 
-
-bool IsFirstConnexion = true;
+extern bool IsFirstConnexion;
 
 
 
@@ -51,27 +59,27 @@ private :
     std::string m_title;
     std::string m_description;
     bool m_done = false;
-    
+
 public :
     Task(void);
     explicit Task(std::string_view, std::string_view);
     Task(const Task&);
-    
+
 public :
     inline void setTitle(std::string_view);
     inline void setDescription(std::string_view);
-    
-    inline std::string_view getTitle(void) const;
-    inline std::string_view getDescription(void) const;
-    
+
+    inline std::string getTitle(void) const;
+    inline std::string getDescription(void) const;
+
     inline bool isDone(void) const;
     inline void hasDone(bool);
-    
-    
-public : 
+
+
+public :
     void save(std::ofstream&);
     void load(std::ifstream&);
-    
+
 public :
     ~Task(void);
 };
@@ -91,38 +99,39 @@ private :
     std::string m_name;
     std::string m_password;
     static int m_count_acc_nm;
-    
+
 public :
     Account(std::string_view, std::string_view);
     Account(void);
     Account(const Account&);
-    
-    
+
+
 public :
     void setPassword(std::string_view pw);
     void setName(std::string_view);
-    
-    std::string_view getName(void) const;
+
+    std::string getName(void) const;
     std::vector<Task>& getTask(void);
-    
+
     bool isPassword(std::string_view);
 
 public :
     int save(std::ofstream&);
     int load(std::ifstream&);
-    
+
 public :
     friend int SaveAccount(std::vector<Account>&, std::ofstream&);
     friend int LoadAccount(std::vector<Account>&, std::ifstream&);
 };
 
 
-
-void Clear(void);
-int InputGuard(void);
+void Input(std::string&);
+void GetIndexFromChar(int&);
+int  InputError(void);
+void InitColor(void);
 void CreateFile(std::string_view);
 void DisplayOption(std::array<std::string, 7>);
-void DisplayTask(std::vector<Account>&, uint32_t, int&&);
+void DisplayTask(std::vector<Account>&, uint32_t);
 void AddTask(std::vector<Account>&, uint32_t);
 int RemoveTask(std::vector<Account>&, uint32_t);
 int ValidTask(std::vector<Account>&, uint32_t);
@@ -137,13 +146,6 @@ int load(std::vector<Account>&, uint32_t&, std::string_view);
 
 
 
-
-void Print(void) {}
-template<typename T, typename... Args>
-void Print(T arg, Args... args) {
-    std::cout << arg;
-    Print(args...);
-}
 template<typename... Args>
 void CreateFile(std::string_view FILE, Args... other) {
     CreateFile(FILE);
@@ -151,3 +153,4 @@ void CreateFile(std::string_view FILE, Args... other) {
 }
 
 #endif
+

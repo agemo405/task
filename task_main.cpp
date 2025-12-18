@@ -1,25 +1,21 @@
 #include <ncurses.h>
 #include "task.hpp"
-#include "task_def.cpp"
 
 
 int main(void) {
-    
-    init_win();
+
+    initscr();
     start_color();
     cbreak();
     noecho();
 
-    refresh();
-    
-    
+
     std::vector<Account> Tasks;
     uint32_t FocusAcc(0);
+    int Input(0);
 
-    int _input(0);
-    
     std::array<std::string, 7> aOption;
-    
+
     aOption.at(0) = "1 - afficher .";
     aOption.at(1) = "2 - ajouter .";
     aOption.at(2) = "3 - supprimer .";
@@ -27,32 +23,33 @@ int main(void) {
     aOption.at(4) = "5 - info .";
     aOption.at(5) = "6- compte .";
     aOption.at(6) = "7 - quitter .";
-    
-    CreateFile(_FILE_, _FILE_ACC_);
-    
-    load(Tasks, FocusAcc, _FILE_);
-    
-    Print(YELLOW, std::setw(LINE_WIDTH), "<TASK : GESTIONNAIRE DE TACHE>", "\n\v", RESET);
-    
-     while(IsFirstConnexion) if(LogAccount(Tasks, FocusAcc, _FILE_ACC_) < 0) return -1;
-     
-     std::cout << std::left;
- 
 
-    while(_input != EXIT) {
-        Print("Que voulez vous faire : \n\v");
+    CreateFile(FILE_TASK_DATA, FILE_ACCOUNT_DATA);
+    InitColor();
+
+    load(Tasks, FocusAcc, FILE_TASK_DATA);
+    DRAW(YELLOW);
+    printw("<TASK : GESTIONNAIRE DE TACHE>");
+    CLEAR(YELLOW);
+    VER_TAB();
+    while(IsFirstConnexion) if(LogAccount(Tasks, FocusAcc, FILE_ACCOUNT_DATA) < 0) return -1;
+
+
+    while(Input != EXIT) {
+        printw("Que voulez vous faire :");
+        VER_TAB();
         DisplayOption(aOption);
-        std::cin >> _input;
-        if(_input == DISPLAY) DisplayTask(Tasks, FocusAcc, LINE_WIDTH);
-        else if(_input == ADD) AddTask(Tasks, FocusAcc);
-        else if(_input == REMOVE) RemoveTask(Tasks, FocusAcc);
-        else if(_input == VALID) ValidTask(Tasks, FocusAcc);
-        else if(_input == INFO) TaskInfo(Tasks, FocusAcc);
-        else if(_input == ACCOUNT) LogAccount(Tasks, FocusAcc, _FILE_ACC_);
-        InputGuard();
-        save(Tasks, FocusAcc, _FILE_);
+        GetIndexFromChar(Input);
+
+        if(Input == DISPLAY) DisplayTask(Tasks, FocusAcc);
+        else if(Input == ADD) AddTask(Tasks, FocusAcc);
+        else if(Input == REMOVE) RemoveTask(Tasks, FocusAcc);
+        else if(Input == VALID) ValidTask(Tasks, FocusAcc);
+        else if(Input == INFO) TaskInfo(Tasks, FocusAcc);
+        else if(Input == ACCOUNT) LogAccount(Tasks, FocusAcc, FILE_ACCOUNT_DATA);
+        else InputError();
+        save(Tasks, FocusAcc, FILE_TASK_DATA);
     }
 
-    erase();
     endwin();
 }
