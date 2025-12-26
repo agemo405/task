@@ -94,19 +94,19 @@ bool Account::isPassword(std::string_view pw) {
 
 int Account::save(std::ofstream& ofs) {
 
-    if(!ofs.is_open()) return -1;
+    if(!ofs.is_open()) return (int)error::file_no_open;
     size_t size = m_task.size();
 
     ofs.write(reinterpret_cast<const char*>(&size), sizeof(size));
     for(auto& e : m_task) e.save(ofs);
-    return 0;
+    return (int)error::none;
 
 }
 
 int Account::load(std::ifstream& ifs) {
 
-    if(!ifs.is_open()) return -1;
-    if(ifs.peek() == std::ifstream::traits_type::eof()) return 0;
+    if(!ifs.is_open()) return (int)error::file_no_open;
+    if(ifs.peek() == std::ifstream::traits_type::eof()) return (int)error::eof;
    size_t size;
     ifs.read(reinterpret_cast<char*>(&size), sizeof(size));
 
@@ -116,7 +116,7 @@ int Account::load(std::ifstream& ifs) {
         m_task.emplace_back(std::move(task));
     }
 
-    return 0;
+    return (int)error::none;
 }
 
 
@@ -136,17 +136,18 @@ void Input(std::string& str) {
 
 void GetIndexFromChar(int& d) {
     char input = getch();
-    d = input - 48;
+    d =static_cast<int>(input) - 48;
 }
 
 
-int InputError(void) {
+void InputError(WINDOW *&win) {
     DRAW(RED);
     DRAW(BOLD);
     printw("entrée invalide ! .");
     CLEAR(BOLD);
     CLEAR(RED);
     ENDL();
+    wnoutrefresh(win);
 }
 
 
@@ -159,6 +160,18 @@ void InitColor(void) {
 }
 
 
+
+void ResizeScreens(WINDOW *&main, WINDOW *&sub) {
+    resizeterm(LINES, COLS);
+    delwin(sub);
+    sub = newwin(5, COLS, 0, 0);
+    clear();
+    wnoutrefresh(main);
+    wnoutrefresh(sub);
+}
+
+
+
 void CreateFile(std::string_view FILE) {
     std::ofstream of(FILE, std::ios::binary | std::ios::app);
     of.close();
@@ -169,12 +182,13 @@ void CreateFile(std::string_view FILE) {
 
 
 
-void DisplayOption(std::array<std::string, 7> vec) {
+void DisplayOption(WINDOW *&win, std::array<std::string, 7> vec) {
    ENDL();
     for(const auto& e : vec) {
        printw("%s", e.c_str());
         ENDL();
     }
+    wnoutrefresh(win);
 }
 
 
@@ -182,7 +196,7 @@ void DisplayOption(std::array<std::string, 7> vec) {
 
 
 
-void DisplayTask(std::vector<Account>& vec, uint32_t f) {
+void DisplayTask(WINDOW *&win, std::vector<Account>& vec, uint32_t f) {
    ENDL();
    int i = 1;
 
@@ -196,31 +210,32 @@ void DisplayTask(std::vector<Account>& vec, uint32_t f) {
         for(const auto& e : temp.getTask()) {
             std::string sub = std::string(e.getTitle());
 
-            char symb;
             int str_end = sub.length() - 1;
             int max_size = MAX_TITLE_DISPLAY_SIZE;
             if(str_end > max_size) {
                 sub = sub.substr(0, max_size) + "...";
             }
 
-            if(e.isDone()) {
-                #define COLOR GREEN
-                symb = '0';
-            }
-            else {
-                #define COLOR RED
-                symb = 'X';
-            }
 
             printw("%d - %-40s", i, sub.c_str());
-            DRAW(COLOR);
-            printw( "[%c]", symb);
-            CLEAR(COLOR);
-            ++i;
+            if(e.isDone()) {
+
+                DRAW(GREEN);
+                printw( "[O]");
+                CLEAR(GREEN);
+
+            } else {
+
+                DRAW(RED);
+       		printw("[X]");
+                CLEAR(RED);
+
+            }
+            i++;
         }
    }
    VER_TAB();
-   refresh();
+   wnoutrefresh(win);
 }
 
 
@@ -230,7 +245,7 @@ void DisplayTask(std::vector<Account>& vec, uint32_t f) {
 
 
 
-void AddTask(std::vector<Account>& vec, uint32_t f) {
+void AddTask(WINDOW *&win, std::vector<Account>& vec, uint32_t f) {
     std::string title, desc;
 
     printw("Quel est le ");
@@ -239,6 +254,8 @@ void AddTask(std::vector<Account>& vec, uint32_t f) {
     CLEAR(PURPLE);
     printw(" de la tache : %c", TAB);
     Input(title);
+    wnoutrefresh(win);
+    doupdate();
 
     printw("Quel est la ");
     DRAW(PURPLE);
@@ -246,6 +263,8 @@ void AddTask(std::vector<Account>& vec, uint32_t f) {
     CLEAR(PURPLE);
     printw( " de la tache : %c", TAB);
     Input(desc);
+    wnoutrefresh(win);
+    doupdate();
 
     auto& temp = vec.at(f);
     temp.getTask().emplace_back(Task(title, desc));
@@ -255,21 +274,24 @@ void AddTask(std::vector<Account>& vec, uint32_t f) {
     CLEAR(BOLD);
     CLEAR(GREEN);
     VER_TAB();
+    wnoutrefresh(win);
 }
 
 
-int RemoveTask(std::vector<Account>& vec, uint32_t f ) {
+int RemoveTask(WINDOW *&win, std::vector<Account>& vec, uint32_t f ) {
 
     int index = 0;
     printw("Quel tache voulez vous supprimer : ");
     GetIndexFromChar(index);
-
+    wnoutrefresh(win);
+    doupdate();
+    VER_TAB();
     auto& temp = vec.at(f);
 
     if(index <= 0 || index > temp.getTask().size()) {
-        InputError();
+        InputError(win);
         VER_TAB();
-        return -1;
+        return (int)error::out_of_range;
     }
 
     --index;
@@ -281,7 +303,8 @@ int RemoveTask(std::vector<Account>& vec, uint32_t f ) {
     DRAW(BOLD);
     DRAW(GREEN);
     VER_TAB();
-    return 0;
+    wnoutrefresh(win);
+    return (int)error::none;
 }
 
 
@@ -291,16 +314,18 @@ int RemoveTask(std::vector<Account>& vec, uint32_t f ) {
 
 
 
-int ValidTask(std::vector<Account>& vec, uint32_t f) {
+int ValidTask(WINDOW *&win, std::vector<Account>& vec, uint32_t f) {
 
     int index;
     printw("quelle tache a ete accomplie : ");
+    wnoutrefresh(win);
+    doupdate();
     GetIndexFromChar(index);
-
+    VER_TAB();
 
     if(index <=0 || index > vec.at(f).getTask().size()) {
-        InputError();
-        return -1;
+        InputError(win);
+        return (int)error::out_of_range;
     }
 
     --index;
@@ -310,8 +335,8 @@ int ValidTask(std::vector<Account>& vec, uint32_t f) {
 
     if(temp2.isDone()) temp2.hasDone(false);
     else temp2.hasDone(true);
-
-    return 0;
+    wnoutrefresh(win);
+    return (int)error::none;
 }
 
 
@@ -321,17 +346,20 @@ int ValidTask(std::vector<Account>& vec, uint32_t f) {
 
 
 
-int TaskInfo(std::vector<Account>& vec, uint32_t f) {
+int TaskInfo(WINDOW *&win, std::vector<Account>& vec, uint32_t f) {
     int index = 0;
 
     printw("Quelle tache voulez vous connaitre les details : ");
+    wnoutrefresh(win);
+    doupdate();
     GetIndexFromChar(index);
 
     auto& temp = vec.at(f);
 
     if(index > temp.getTask().size()) {
-        InputError();
-        return -1;
+        InputError(win);
+        VER_TAB();
+        return (int)error::out_of_range;
     }
 
     --index;
@@ -341,8 +369,8 @@ int TaskInfo(std::vector<Account>& vec, uint32_t f) {
 
     printw("%s :\n%s . ", temp2.getTitle().c_str(), temp2.getDescription().c_str());
     VER_TAB();
-
-    return 0;
+    wnoutrefresh(win);
+    return (int)error::none;
 }
 
 
@@ -360,7 +388,7 @@ int SaveAccount (std::vector<Account>&vec, std::ofstream& ofs) {
         ofs.write(reinterpret_cast<const char *>(&size_nm), sizeof(size_nm));  
         ofs.write(e.m_name.c_str(), size_nm);
     }
-
+    return (int)error::none;
 }
 
 
@@ -371,7 +399,7 @@ int SaveAccount (std::vector<Account>&vec, std::ofstream& ofs) {
 int LoadAccount (std::vector<Account>& vec, std::ifstream& ifs) {
 
     if(ifs.peek() == std::ifstream::traits_type::eof())
-        return 0;
+        return (int)error::eof;
     for(auto& e : vec) {
 
         size_t size_pw;
@@ -384,7 +412,7 @@ int LoadAccount (std::vector<Account>& vec, std::ifstream& ifs) {
         e.m_name.resize(size_nm);
         ifs.read(const_cast<char *>(e.m_name.data()), size_nm);
     }
-    return 0;
+    return (int)error::none;
 
 }
 
@@ -396,7 +424,7 @@ int LoadAccount (std::vector<Account>& vec, std::ifstream& ifs) {
 
 
 
-int LogAccount(std::vector<Account>& _acc, uint32_t& f, std::string_view FILE) {
+int LogAccount(WINDOW *&win, std::vector<Account>& _acc, uint32_t& f, std::string_view FILE) {
 
     std::ifstream ifs(FILE, std::ios::binary);
 
@@ -409,18 +437,20 @@ int LogAccount(std::vector<Account>& _acc, uint32_t& f, std::string_view FILE) {
     if(IsFirstConnexion) {
         printw("Bienvenu sur task : gestionnaire de tache .\nVeillez creer un compte pour commencer .");
         ENDL();
+        wnoutrefresh(win);
     }
 
     printw("que voulez vous faire :");
     VER_TAB();
     printw("1 - creer un compte .\n");
     printw("2 - se connecter a un compte existant .\n");
+    wnoutrefresh(win);
+    doupdate();
     GetIndexFromChar(input);
 
-
     if(input <= 0 || input > 2) {
-        InputError();
-        return -1;
+        InputError(win);
+        return (int)error::out_of_range;
     }
 
     if(input == 1) {
@@ -430,15 +460,21 @@ int LogAccount(std::vector<Account>& _acc, uint32_t& f, std::string_view FILE) {
 
         VER_TAB();
         printw("quel est le nom du compte : ");
+        wnoutrefresh(win);
+        doupdate();
         Input(name);
 
         do {
             VER_TAB();
             printw("veuillez saisir un mot de passe : ");
+            wnoutrefresh(win);
+            doupdate();
             Input(password);
 
             VER_TAB();
             printw("veuillez confirmer le mot de passe : ");
+            wnoutrefresh(win);
+            doupdate();
             Input(tpassword);
 
             if(password != tpassword) printw("mot de passe incorrecte .\n");
@@ -446,6 +482,7 @@ int LogAccount(std::vector<Account>& _acc, uint32_t& f, std::string_view FILE) {
             else {
                 Account acc(name, password);
                 printw("compte cree avec succes");
+     		wnoutrefresh(win);
                 VER_TAB();
 
                 _acc.emplace_back(std::move(acc));
@@ -470,16 +507,20 @@ int LogAccount(std::vector<Account>& _acc, uint32_t& f, std::string_view FILE) {
             ENDL();
             i++;
         }
+        wnoutrefresh(win);
+        doupdate();
         GetIndexFromChar(index);
         --index;
 
         if(index >= _acc.size()) {
-            InputError();
-            return -1;
+            InputError(win);
+            return (int)error::out_of_range;
         }
 
         auto& temp = _acc.at(index);
         printw("veuillez saisir le mot de passe : ");
+        wnoutrefresh(win);
+        doupdate();
         Input(pw);
 
         if(temp.isPassword(pw)) {
@@ -490,19 +531,18 @@ int LogAccount(std::vector<Account>& _acc, uint32_t& f, std::string_view FILE) {
 	    CLEAR(BOLD);
             CLEAR(GREEN);
             VER_TAB();
-        }
-        else {
+        } else {
             DRAW(RED);
             DRAW(BOLD);
             printw("mot de passe incorrecte, l\'acces au compte a ete refuse .");
             CLEAR(BOLD);
 	    CLEAR(RED);
             VER_TAB();
-            return -1;
+            return (int)error::input_error;
         }
     }
-    refresh();
-    return 0;
+    wnoutrefresh(win);
+    return (int)error::none;
 }
 
 
@@ -515,7 +555,7 @@ int LogAccount(std::vector<Account>& _acc, uint32_t& f, std::string_view FILE) {
 
 int save(std::vector<Account>& vec,uint32_t& focus,  std::string_view FILE) {
     std::ofstream ofs(FILE , std::ios::binary);
-    if(!ofs.is_open()) return -1;
+    if(!ofs.is_open()) return (int)error::file_no_open;
     size_t size = vec.size();
 
     ofs.write(reinterpret_cast<const char*>(&size), sizeof(size));
@@ -523,7 +563,7 @@ int save(std::vector<Account>& vec,uint32_t& focus,  std::string_view FILE) {
     ofs.write(reinterpret_cast<const char*>(&IsFirstConnexion), sizeof(bool));
     for(auto& e : vec) e.save(ofs);
     ofs.close();
-    return 0;
+    return (int)error::none;
 }
 
 
@@ -536,8 +576,8 @@ int save(std::vector<Account>& vec,uint32_t& focus,  std::string_view FILE) {
 
 int load(std::vector<Account>& vec, uint32_t& focus, std::string_view FILE) {
     std::ifstream ifs(FILE  , std::ios::binary);
-    if(!ifs.is_open()) return -1;
-    if(ifs.peek() == std::ifstream::traits_type::eof()) return 0;
+    if(!ifs.is_open()) return (int)error::file_no_open;
+    if(ifs.peek() == std::ifstream::traits_type::eof()) return (int)error::eof;
     size_t size;
     ifs.read(reinterpret_cast<char*>(&size), sizeof(size));
     ifs.read(reinterpret_cast<char*>(&focus), sizeof(focus));
@@ -549,5 +589,6 @@ int load(std::vector<Account>& vec, uint32_t& focus, std::string_view FILE) {
     }
 
     ifs.close();
-    return 0;
+    return (int)error::none;
 }
+

@@ -35,8 +35,9 @@
 #define PURPLE COLOR_PAIR(PURPLE_ID)
 
 #define TAB '\t'
-#define ENDL() printw("\n");
-#define VER_TAB() printw("\n\v");
+#define ENDL() printw("\n")
+#define VER_TAB() printw("\n\v")
+#define WVER_TAB(WIN) wprintw(WIN, "\n\v")
 
 #define BOLD A_BOLD
 #define LIGHT A_DIM
@@ -45,12 +46,20 @@
 
 #define DRAW(ATT) attron(ATT)
 #define CLEAR(ATT) attroff(ATT)
-
+#define WDRAW(WIN, ATT) wattron(WIN, ATT)
+#define WCLEAR(WIN, ATT) wattroff(WIN, ATT)
 
 extern bool IsFirstConnexion;
 
 
-
+enum class error {
+    input_error = -5,
+    out_of_range,
+    file_no_open,
+    eof,
+    undefined_error,
+    none
+};
 
 
 class Task {
@@ -127,18 +136,19 @@ public :
 
 void Input(std::string&);
 void GetIndexFromChar(int&);
-int  InputError(void);
+void InputError(WINDOW *&);
 void InitColor(void);
 void CreateFile(std::string_view);
-void DisplayOption(std::array<std::string, 7>);
-void DisplayTask(std::vector<Account>&, uint32_t);
-void AddTask(std::vector<Account>&, uint32_t);
-int RemoveTask(std::vector<Account>&, uint32_t);
-int ValidTask(std::vector<Account>&, uint32_t);
-int TaskInfo(std::vector<Account>&, uint32_t);
+void ResizeScreens(WINDOW *&,WINDOW *&);
+void DisplayOption(WINDOW *&, std::array<std::string, 7>);
+void DisplayTask(WINDOW *&, std::vector<Account>&, uint32_t);
+void AddTask(WINDOW *&, std::vector<Account>&, uint32_t);
+int RemoveTask(WINDOW *&, std::vector<Account>&, uint32_t);
+int ValidTask(WINDOW *&, std::vector<Account>&, uint32_t);
+int TaskInfo(WINDOW *&, std::vector<Account>&, uint32_t);
 int SaveAccount (std::vector<Account>&, std::ofstream&);
 int LoadAccount (std::vector<Account>&, std::ifstream&);
-int LogAccount(std::vector<Account>&, uint32_t&, std::string_view);
+int LogAccount(WINDOW *&, std::vector<Account>&, uint32_t&, std::string_view);
 int save(std::vector<Account>&, uint32_t&,  std::string_view);
 int load(std::vector<Account>&, uint32_t&, std::string_view);
 

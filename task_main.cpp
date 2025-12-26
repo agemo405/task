@@ -8,7 +8,9 @@ int main(void) {
     start_color();
     cbreak();
     noecho();
+    keypad(stdscr, TRUE);
 
+    WINDOW *ConstWin = newwin(5, COLS, 0, 0);
 
     std::vector<Account> Tasks;
     uint32_t FocusAcc(0);
@@ -28,28 +30,41 @@ int main(void) {
     InitColor();
 
     load(Tasks, FocusAcc, FILE_TASK_DATA);
-    DRAW(YELLOW);
-    printw("<TASK : GESTIONNAIRE DE TACHE>");
-    CLEAR(YELLOW);
-    VER_TAB();
-    while(IsFirstConnexion) if(LogAccount(Tasks, FocusAcc, FILE_ACCOUNT_DATA) < 0) return -1;
+    WDRAW(ConstWin, YELLOW);
+    wprintw(ConstWin, "<TASK : GESTIONNAIRE DE TACHE>");
+    wnoutrefresh(ConstWin);
+    WCLEAR(ConstWin, YELLOW);
+    WVER_TAB(ConstWin);
+    while(IsFirstConnexion) if(LogAccount(stdscr, Tasks, FocusAcc, FILE_ACCOUNT_DATA) < 0) return (int)error::undefined_error;
 
 
     while(Input != EXIT) {
         printw("Que voulez vous faire :");
         VER_TAB();
-        DisplayOption(aOption);
-        GetIndexFromChar(Input);
+        wnoutrefresh(stdscr);
+        doupdate();
 
-        if(Input == DISPLAY) DisplayTask(Tasks, FocusAcc);
-        else if(Input == ADD) AddTask(Tasks, FocusAcc);
-        else if(Input == REMOVE) RemoveTask(Tasks, FocusAcc);
-        else if(Input == VALID) ValidTask(Tasks, FocusAcc);
-        else if(Input == INFO) TaskInfo(Tasks, FocusAcc);
-        else if(Input == ACCOUNT) LogAccount(Tasks, FocusAcc, FILE_ACCOUNT_DATA);
-        else InputError();
+        DisplayOption(stdscr, aOption);
+        GetIndexFromChar(Input);
+        switch(Input) {
+            clear();
+            printw("colone : %d", COLS);
+            printw("line : %d", LINES);
+            case DISPLAY: DisplayTask(stdscr, Tasks,  FocusAcc); break;
+            case ADD: AddTask(stdscr, Tasks, FocusAcc); break;
+            case REMOVE: RemoveTask(stdscr, Tasks, FocusAcc); break;
+            case VALID: ValidTask(stdscr, Tasks, FocusAcc); break;
+            case INFO: TaskInfo(stdscr, Tasks, FocusAcc); break;
+            case ACCOUNT: LogAccount(stdscr, Tasks, FocusAcc, FILE_ACCOUNT_DATA); break;
+            case KEY_RESIZE: ResizeScreens(ConstWin, stdscr);
+            default: InputError(stdscr); break;
+        }
+
         save(Tasks, FocusAcc, FILE_TASK_DATA);
+        doupdate();
     }
 
+    delwin(ConstWin);
     endwin();
+    return (int)error::none;
 }
